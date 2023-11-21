@@ -193,41 +193,39 @@ class Planet():
         return result_df
 
     def calculate_energy(self, result):
-        # Calculate the kinetic energy
+    # Calculate the kinetic energy at each step
         kinetic_energy = 0.5 * result['mass'] * result['velocity']**2
 
-        # Convert kinetic energy from Joules to kilotons of TNT
+    # Convert kinetic energy from Joules to kilotons of TNT (1 kt TNT = 4.184e12 Joules)
         kinetic_energy_kt = kinetic_energy / 4.184e12
 
-        # Calculate the energy difference between successive steps
-        energy_diff = np.diff(kinetic_energy_kt, prepend=np.nan)
+    # Calculate the energy change between successive steps
+        energy_diff = np.diff(kinetic_energy_kt, prepend=kinetic_energy_kt[0])
 
-        # Calculate the altitude difference between successive steps
-        altitude_diff = np.diff(result['altitude'], prepend=np.nan)
+    # Calculate the altitude difference between successive steps
+        altitude_diff = np.diff(result['altitude'], prepend=result['altitude'][0])
 
-        # Avoid division by zero by replacing zeros with NaN
-        altitude_diff[altitude_diff == 0] = np.nan
-            
-        # Calculate dedz, convert from per meter to per kilometer
+    # Calculate dedz (change in energy per kilometer of altitude)
+    # Note: Convert altitude change from meters to kilometers for correct units
+    # Avoid division by zero by replacing zeros with a small number
+        altitude_diff[altitude_diff == 0] = 1e-6
         dedz = energy_diff / (altitude_diff / 1000)
 
-        # Update or create the 'dedz' column
-        if 'dedz' in result.columns:
-            result['dedz'] = dedz
-        else:
-            result.insert(len(result.columns), 'dedz', dedz)
+    # Update or create the 'dedz' column
+        result['dedz'] = dedz
 
         return result
 
+
     def analyse_outcome(self, result):
         """
-        Inspect a pre-found solution to calculate the impact and airburst stats
+        Inspect a pre-found solution to calculate the impact and airburst stats.
 
         Parameters
         ----------
         result : DataFrame
             pandas dataframe with velocity, mass, angle, altitude, horizontal
-            distance, radius and dedz as a function of time
+            distance, radius and dedz as a function of time.
 
         Returns
         -------
@@ -238,7 +236,7 @@ class Planet():
                 following strings: ``Airburst`` or ``Cratering``),
             as well as the following 4 keys:
                 ``burst_peak_dedz``, ``burst_altitude``,
-                ``burst_distance``, ``burst_energy``
+                ``burst_distance``, ``burst_energy``.
         """
 
         outcome = {'outcome': 'Unknown',
@@ -253,19 +251,24 @@ class Planet():
         # Find the index of the maximum energy deposition rate
         max_dedz_idx = result['dedz'].idxmax()
         max_dedz = result.loc[max_dedz_idx, 'dedz']
+        max_dedz_altitude = result.loc[max_dedz_idx, 'altitude']
 
         # Check if the max energy deposition occurs at an altitude above 0
-        if result.loc[max_dedz_idx, 'altitude'] > 0:
+        if max_dedz_altitude > 0:
             outcome['outcome'] = 'Airburst'
             outcome['burst_peak_dedz'] = max_dedz
-            outcome['burst_altitude'] = result.loc[max_dedz_idx, 'altitude']
+            outcome['burst_altitude'] = max_dedz_altitude
             outcome['burst_distance'] = result.loc[max_dedz_idx, 'distance']
-            outcome['burst_energy'] = result.loc[max_dedz_idx, 'dedz']
+            # Calculate burst energy as the kinetic energy at the burst point
+            burst_mass = result.loc[max_dedz_idx, 'mass']
+            burst_velocity = result.loc[max_dedz_idx, 'velocity']
+            outcome['burst_energy'] = 0.5 * burst_mass * burst_velocity**2 / 4.184e12  # in kt
         else:
             outcome['outcome'] = 'Cratering'
-            # For cratering, determine the specifics at the point of ground impact
+            # Additional details for cratering can be added based on specific criteria
 
         return outcome
+
     
     def read_csv(self):
         self.altitudes = []
