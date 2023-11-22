@@ -7,22 +7,32 @@ import numpy as np
 import pandas as pd
 
 
-__all__ = ['Planet']
+__all__ = ["Planet"]
 
 
-class Planet():
+class Planet:
     """
     The class called Planet is initialised with constants appropriate
     for the given target planet, including the atmospheric density profile
     and other constants
     """
 
-    def __init__(self, atmos_func='exponential',
-                 atmos_filename=os.sep.join((os.path.dirname(__file__), '..',
-                                             'resources',
-                                             'AltitudeDensityTable.csv')),
-                 Cd=1., Ch=0.1, Q=1e7, Cl=1e-3, alpha=0.3,
-                 Rp=6371e3, g=9.81, H=8000., rho0=1.2):
+    def __init__(
+        self,
+        atmos_func="exponential",
+        atmos_filename=os.sep.join(
+            (os.path.dirname(__file__), "..", "resources", "AltitudeDensityTable.csv")
+        ),
+        Cd=1.0,
+        Ch=0.1,
+        Q=1e7,
+        Cl=1e-3,
+        alpha=0.3,
+        Rp=6371e3,
+        g=9.81,
+        H=8000.0,
+        rho0=1.2,
+    ):
         """
         Set up the initial parameters and constants for the target planet
 
@@ -79,17 +89,17 @@ class Planet():
 
         try:
             # set function to define atmoshperic density
-            if atmos_func == 'exponential':
+            if atmos_func == "exponential":
                 self.rhoa = lambda z: rho0 * np.exp(-z / H)
-            elif atmos_func == 'tabular':
+            elif atmos_func == "tabular":
                 self.read_csv()
                 self.rhoa = lambda x: self.linear_interpolate(x)
-            elif atmos_func == 'constant':
+            elif atmos_func == "constant":
                 self.rhoa = lambda x: rho0
             else:
                 raise NotImplementedError(
                     "atmos_func must be 'exponential', 'tabular' or 'constant'"
-                    )
+                )
         except NotImplementedError:
             print("atmos_func {} not implemented yet.".format(atmos_func))
             print("Falling back to constant density atmosphere for now")
@@ -116,6 +126,20 @@ class Planet():
     ):
         if not radians:
             angle = np.radians(angle)
+
+        # def simple_equations_of_motion(t, y):
+        #     v, m, theta, z, x, r = y
+        #     rho_a = self.rhoa(z)
+        #     A = np.pi * r**2
+
+        #     dvdt = (-self.Cd * rho_a * A * v**2) / (2 * m)
+        #     dmdt = 0
+        #     dthetadt = 0
+        #     dzdt = -v * np.sin(theta)
+        #     dxdt = v * np.cos(theta)
+        #     drdt = 0
+
+        #     return np.array([dvdt, dmdt, dthetadt, dzdt, dxdt, drdt])
 
         def equations_of_motion(t, y):
             v, m, theta, z, x, r = y
@@ -153,20 +177,37 @@ class Planet():
         results = []
         fragmented = False
         user_time_elapsed = 0.0  # Initialize the user-specified time elapsed counter
+        results.append([t] + list(y0))
 
         while True:
-            #
+            # dt_actual = min(dt - user_time_elapsed, 0.01)
             dt_actual = min(dt, 0.05)
+            # if self.Cl == 0 and self.g == 0:
+            #     y0 = self.rk4_step(simple_equations_of_motion, y0, t, dt_actual)
+            # else:
             y0 = self.rk4_step(equations_of_motion, y0, t, dt_actual)
             t += dt_actual
+            # user_time_elapsed = dt
             user_time_elapsed += dt_actual
+
+            if y0[1] <= 0 or y0[3] <= 0:
+                break
 
             if user_time_elapsed >= dt:
                 results.append([t] + list(y0))
                 user_time_elapsed = 0.0  # Reset the user-specified time elapsed counter
 
-            if y0[0] <= 531:
-                break
+            # Check if the loop should terminate based on new altitude conditions
+
+            # If altitude is increasing or if altitude has not changed significantly in 2-3 dt
+            if len(results) > 3:  # Ensure there are enough points to compare
+                # Check for increase in altitude
+                if y0[3] > results[-1][4]:
+                    break
+                # Check if altitude hasn't changed significantly in 2-3 timesteps
+                altitude_change = abs(y0[3] - results[-3][4])
+                if altitude_change < 1e-3:
+                    break
 
             ram_pressure = self.rhoa(y0[3]) * y0[0] ** 2
             if ram_pressure > strength:
@@ -193,8 +234,32 @@ class Planet():
         return result_df
 
     def calculate_energy(self, result):
+        """
+        Function to calculate the kinetic energy lost per unit altitude in
+        kilotons TNT per km, for a given solution.
+
+        Parameters
+        ----------
+        result : DataFrame
+            A pandas dataframe with columns for the velocity, mass, angle,
+            altitude, horizontal distance and radius as a function of time
+
+        Returns : DataFrame
+            Returns the dataframe with additional column ``dedz`` which is the
+            kinetic energy lost per unit altitude
+
+        """
+
+        # Replace these lines with your code to add the dedz column to
+        # the result DataFrame
+        result = result.copy()
+        result.insert(len(result.columns), "dedz", np.array(np.nan))
+
+        return result
+
+    def calculate_energy(self, result):
         # Calculate the kinetic energy
-        kinetic_energy = 0.5 * result['mass'] * result['velocity']**2
+        kinetic_energy = 0.5 * result["mass"] * result["velocity"] ** 2
 
         # Convert kinetic energy from Joules to kilotons of TNT
         kinetic_energy_kt = kinetic_energy / 4.184e12
@@ -203,19 +268,19 @@ class Planet():
         energy_diff = np.diff(kinetic_energy_kt, prepend=np.nan)
 
         # Calculate the altitude difference between successive steps
-        altitude_diff = np.diff(result['altitude'], prepend=np.nan)
+        altitude_diff = np.diff(result["altitude"], prepend=np.nan)
 
         # Avoid division by zero by replacing zeros with NaN
         altitude_diff[altitude_diff == 0] = np.nan
-            
+
         # Calculate dedz, convert from per meter to per kilometer
         dedz = energy_diff / (altitude_diff / 1000)
 
         # Update or create the 'dedz' column
-        if 'dedz' in result.columns:
-            result['dedz'] = dedz
+        if "dedz" in result.columns:
+            result["dedz"] = dedz
         else:
-            result.insert(len(result.columns), 'dedz', dedz)
+            result.insert(len(result.columns), "dedz", dedz)
 
         return result
 
@@ -241,36 +306,38 @@ class Planet():
                 ``burst_distance``, ``burst_energy``
         """
 
-        outcome = {'outcome': 'Unknown',
-                   'burst_peak_dedz': 0.,
-                   'burst_altitude': 0.,
-                   'burst_distance': 0.,
-                   'burst_energy': 0.}
+        outcome = {
+            "outcome": "Unknown",
+            "burst_peak_dedz": 0.0,
+            "burst_altitude": 0.0,
+            "burst_distance": 0.0,
+            "burst_energy": 0.0,
+        }
         # Check if the DataFrame is empty
         if result.empty:
             return outcome
 
         # Find the index of the maximum energy deposition rate
-        max_dedz_idx = result['dedz'].idxmax()
-        max_dedz = result.loc[max_dedz_idx, 'dedz']
+        max_dedz_idx = result["dedz"].idxmax()
+        max_dedz = result.loc[max_dedz_idx, "dedz"]
 
         # Check if the max energy deposition occurs at an altitude above 0
-        if result.loc[max_dedz_idx, 'altitude'] > 0:
-            outcome['outcome'] = 'Airburst'
-            outcome['burst_peak_dedz'] = max_dedz
-            outcome['burst_altitude'] = result.loc[max_dedz_idx, 'altitude']
-            outcome['burst_distance'] = result.loc[max_dedz_idx, 'distance']
-            outcome['burst_energy'] = result.loc[max_dedz_idx, 'dedz']
+        if result.loc[max_dedz_idx, "altitude"] > 0:
+            outcome["outcome"] = "Airburst"
+            outcome["burst_peak_dedz"] = max_dedz
+            outcome["burst_altitude"] = result.loc[max_dedz_idx, "altitude"]
+            outcome["burst_distance"] = result.loc[max_dedz_idx, "distance"]
+            outcome["burst_energy"] = result.loc[max_dedz_idx, "dedz"]
         else:
-            outcome['outcome'] = 'Cratering'
+            outcome["outcome"] = "Cratering"
             # For cratering, determine the specifics at the point of ground impact
 
         return outcome
-    
+
     def read_csv(self):
         self.altitudes = []
         self.densities = []
-        with open(self.atmos_filename, 'r') as file:
+        with open(self.atmos_filename, "r") as file:
             next(file)  # Skip the header line
             for line in file:
                 if line.strip():  # Check if line is not empty
@@ -278,10 +345,12 @@ class Planet():
                     self.altitudes.append(float(parts[0]))  # Altitude value
                     self.densities.append(float(parts[1]))  # Density value
 
-
     def linear_interpolate(self, x):
         for i in range(len(self.altitudes) - 1):
             if self.altitudes[i] <= x <= self.altitudes[i + 1]:
-                return self.densities[i] + (self.densities[i + 1] - self.densities[i]) * \
-                       (x - self.altitudes[i]) / (self.altitudes[i + 1] - self.altitudes[i])
+                return self.densities[i] + (
+                    self.densities[i + 1] - self.densities[i]
+                ) * (x - self.altitudes[i]) / (
+                    self.altitudes[i + 1] - self.altitudes[i]
+                )
         return None  # Return None or handle extrapolation
