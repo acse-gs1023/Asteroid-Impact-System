@@ -2,7 +2,11 @@ from collections import OrderedDict
 import pandas as pd
 import numpy as np
 import os
+import sys
+import pytest
 
+BASE_PATH = os.path.dirname(__file__)
+sys.path.append(os.path.dirname(BASE_PATH))
 from pytest import fixture, mark
 
 
@@ -97,6 +101,13 @@ def test_solve_atmospheric_entry(result):
         assert (result['time'].sort_values() == result['time']).all(), "Time column should be sorted"
 
 
+def load_expected_data():
+    # Load the expected data from scenario.npz
+    data = np.load('scenario.npz')  # change this to your own path
+    df = pd.DataFrame()
+    for key in data.files:
+        df[key] =  data[key]
+    return df
 
 
 def test_calculate_energy(planet, result):
@@ -118,6 +129,8 @@ def test_calculate_energy(planet, result):
 
 
 
+
+
 def test_analyse_outcome(outcome):
     print(outcome)
 
@@ -135,7 +148,7 @@ def test_analyse_outcome(outcome):
     assert isinstance(outcome['burst_altitude'], (int, float)), "The 'burst_altitude' should be a number"
     assert isinstance(outcome['burst_distance'], (int, float)), "The 'burst_distance' should be a number"
     assert isinstance(outcome['burst_energy'], (int, float)), "The 'burst_energy' should be a number"
-    
+
     assert outcome['outcome'] in ['Airburst', 'Cratering'], "The 'outcome' should be either 'Airburst' or 'Cratering'"
     assert outcome['burst_peak_dedz'] >= 0, "The 'burst_peak_dedz' should be non-negative"
     assert outcome['burst_altitude'] >= 0, "The 'burst_altitude' should be non-negative"
@@ -144,19 +157,6 @@ def test_analyse_outcome(outcome):
     # Consistency Tests: Check that the data within the outcome is consistent. For example, if a larger burst_energy should correlate with a larger burst_peak_dedz
     if 'burst_energy' in outcome and 'burst_peak_dedz' in outcome:
         assert outcome['burst_energy'] >= outcome['burst_peak_dedz'], "The 'burst_energy' should be greater than or equal to 'burst_peak_dedz'"
-  
-
-
-def test_scenario(planet):
-
-    inputs = {'radius': 35.,
-              'angle': 45.,
-              'strength': 1e7,
-              'density': 3000.,
-              'velocity': 19e3}
-
-    result = planet.solve_atmospheric_entry(**inputs)
-    # print(result)
 
 
 
@@ -169,6 +169,7 @@ def load_expected_data():
     return df
 
 
+
 def test_scenario(planet):
     inputs = {'radius': 35.,
               'angle': 45.,
@@ -177,9 +178,9 @@ def test_scenario(planet):
               'velocity': 19e3}
 
 
-
     # Run the simulation
     result = planet.solve_atmospheric_entry(**inputs)
+
     assert type(result) is pd.DataFrame
     for key in ('velocity', 'mass', 'angle', 'altitude',
             'distance', 'radius', 'time'):
@@ -199,7 +200,23 @@ def test_scenario(planet):
                                expected_data[column].iloc[:num_rows_to_compare], 
                                atol=1), f"{column} data does not match expected results in the first {num_rows_to_compare} rows"
 
-  
+
+
+
+    # Get the last row of expected_data
+    last_row_expected = expected_data.iloc[-1]
+
+    # Find the closest row in result to time=10.75 using np.isclose
+    time_10_75_mask = np.isclose(result['time'], 10.75, atol=1)
+    assert time_10_75_mask.any(), "No matching time found for 10.75 in result"
+    result_at_10_75 = result[time_10_75_mask].iloc[0]
+
+    # Check if the closest row in result at time=10.75 matches the values of the last row of expected_data
+    for column in expected_data.columns:
+        if column not in inputs:  # Skip the columns that are part of the inputs
+            assert np.isclose(result_at_10_75[column], last_row_expected[column], atol=1), f"{column} at time 10.75 does not match expected value from scenario.npz"
+
+
 
 def test_damage_zones(deepimpact):
 
@@ -233,6 +250,7 @@ def test_great_circle_distance(deepimpact):
     assert np.allclose(data, dist, rtol=1.0e-4)
 
 
+
 def test_locator_postcodes(loc):
 
     latlon = (52.2074, 0.1170)
@@ -246,3 +264,5 @@ def test_locator_postcodes(loc):
 
 
 
+if __name__  == '__main__':
+    pytest.main([__file__])
