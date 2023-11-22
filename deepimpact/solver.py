@@ -182,32 +182,24 @@ class Planet:
         while True:
             # dt_actual = min(dt - user_time_elapsed, 0.01)
             dt_actual = min(dt, 0.05)
-            # if self.Cl == 0 and self.g == 0:
-            #     y0 = self.rk4_step(simple_equations_of_motion, y0, t, dt_actual)
-            # else:
+
             y0 = self.rk4_step(equations_of_motion, y0, t, dt_actual)
             t += dt_actual
             # user_time_elapsed = dt
             user_time_elapsed += dt_actual
 
-            if y0[1] <= 0 or y0[3] <= 0:
+            if y0[1] <= 0 or y0[3] <= 0 or y0[0] < 530:
                 break
+            if len(results) > 0 and y0[3] > results[-1][4]:
+                break
+            if len(results) > 0:
+                altitude_change = abs(y0[3] - results[-1][4])
+                if altitude_change < 1:
+                    break
 
             if user_time_elapsed >= dt:
                 results.append([t] + list(y0))
                 user_time_elapsed = 0.0  # Reset the user-specified time elapsed counter
-
-            # Check if the loop should terminate based on new altitude conditions
-
-            # If altitude is increasing or if altitude has not changed significantly in 2-3 dt
-            if len(results) > 3:  # Ensure there are enough points to compare
-                # Check for increase in altitude
-                if y0[3] > results[-1][4]:
-                    break
-                # Check if altitude hasn't changed significantly in 2-3 timesteps
-                altitude_change = abs(y0[3] - results[-3][4])
-                if altitude_change < 1e-3:
-                    break
 
             ram_pressure = self.rhoa(y0[3]) * y0[0] ** 2
             if ram_pressure > strength:
