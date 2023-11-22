@@ -196,7 +196,7 @@ def impact_risk(planet,
     return (pd.DataFrame(postcodes_pos, index=range(1)),
             {'mean': np.mean(population_all), 'stdev': np.std(population_all)})
 
-def impact_risk_plot(probability, population):
+def impact_risk_plot(probability):
 
     """
     Plot the probability of postcodes using heatmap.
