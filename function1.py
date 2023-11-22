@@ -164,9 +164,7 @@ def test_scenario(planet):
     return result_df
 
 
-# 示例用法
-# 创建一个Planet实例
 planet_instance = Planet()
-# 运行测试场景
+
 test_result = test_scenario(planet_instance)
 print(test_result)

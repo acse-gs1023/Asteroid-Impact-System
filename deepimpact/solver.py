@@ -181,23 +181,29 @@ class Planet:
 
         while True:
             # dt_actual = min(dt - user_time_elapsed, 0.01)
-            dt_actual = min(dt, 0.05)
+            dt_actual = min(dt, 0.01)
 
             y0 = self.rk4_step(equations_of_motion, y0, t, dt_actual)
             t += dt_actual
             # user_time_elapsed = dt
             user_time_elapsed += dt_actual
 
-            if y0[1] <= 0 or y0[3] <= 0 or y0[0] < 530:
+            if y0[1] <= 0 or y0[3] <= 0:
                 break
             if len(results) > 0 and y0[3] > results[-1][4]:
                 break
-            if len(results) > 0:
-                altitude_change = abs(y0[3] - results[-1][4])
-                if altitude_change < 1:
-                    break
+            # if len(results) > 0:
+            #     altitude_change = abs(y0[3] - results[-1][4])
+            #     if altitude_change < 1:
+            #         break
 
+            # Check for height changes when the cumulative time meets or
+            # exceeds theuser-defined dt
             if user_time_elapsed >= dt:
+                # If the previous result exists and the height change
+                # is less than 1, the simulation is stopped
+                if len(results) > 0 and abs(y0[3] - results[-1][4]) < 1:
+                    break
                 results.append([t] + list(y0))
                 user_time_elapsed = 0.0  # Reset the user-specified time elapsed counter
 
