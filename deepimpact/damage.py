@@ -187,8 +187,9 @@ def impact_risk(planet,
         locators = deepimpact.GeospatialLocator()
         postcodes = locators.get_postcodes_by_radius((blast_lat, blast_lon),radii=damage_rad)
         population = locators.get_population_by_radius((blast_lat, blast_lon),radii=damage_rad)
-        postcodes_all=postcodes_all + postcodes[-1]
-        population_all.append(population[-1])
+        if len(postcodes) != 0:
+            postcodes_all=postcodes_all + postcodes[-1]
+            population_all.append(population[-1])
         print(f"data{i}end")
     element_counts = Counter(postcodes_all)
     postcodes_pos = {key: count / data.shape[0] for key, count in element_counts.items()}
