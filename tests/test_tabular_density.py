@@ -33,7 +33,7 @@ def test_interpolation(earth):
 
 
 def test_extrapolation(earth):
-    expected_extrapolated_density = 0.000003
+    expected_extrapolated_density = .000003
     assert np.isclose(
         earth.rhoa(89700), expected_extrapolated_density, atol=1e-3
         )
