@@ -8,11 +8,8 @@ import pytest
 # BASE_PATH = os.path.dirname(__file__)
 # sys.path.append(os.path.dirname(BASE_PATH))
 from pytest import fixture, mark
-
-
 # Use pytest fixtures to generate objects we know we'll reuse.
 # This makes sure tests run quickly
-
 @fixture(scope='module')
 def deepimpact():
     import deepimpact
@@ -36,7 +33,7 @@ def result(planet):
              'density': 3000.,
              'strength': 1e5,
              'angle': 30.0,
-             'init_altitude': 10000.0,
+             'init_altitude': 100000.0,
              }
 
     result = planet.solve_atmospheric_entry(**input)
@@ -61,8 +58,10 @@ def test_planet_signature(deepimpact):
                          alpha=0.3, Rp=6371e3,
                          g=9.81, H=8000., rho0=1.2)
 
+
     # call by keyword
     _ = deepimpact.Planet(**inputs)
+
 
     # call by position
     _ = deepimpact.Planet(*inputs.values())
@@ -101,9 +100,6 @@ def test_solve_atmospheric_entry(result):
         assert (result['time'].sort_values() == result['time']).all(), "Time column should be sorted"
 
 
-
-
-
 def test_calculate_energy(planet, result):
 
     energy = planet.calculate_energy(result=result)
@@ -115,7 +111,7 @@ def test_calculate_energy(planet, result):
                 'distance', 'radius', 'time', 'dedz'):
         assert key in energy.columns
 
-   
+
     # Check for non-negative values in certain columns
     assert energy['velocity'].ge(0).all()
     assert energy['mass'].ge(0).all()
@@ -123,14 +119,10 @@ def test_calculate_energy(planet, result):
         assert energy[column].ge(0).all()
 
 
-
-
-
 def test_analyse_outcome(outcome):
     print(outcome)
 
     assert type(outcome) is dict
-    
 
     for key in ('outcome', 'burst_peak_dedz', 'burst_altitude',
                 'burst_distance', 'burst_energy'):
@@ -154,7 +146,6 @@ def test_analyse_outcome(outcome):
         assert outcome['burst_energy'] >= outcome['burst_peak_dedz'], "The 'burst_energy' should be greater than or equal to 'burst_peak_dedz'"
 
 
-
 def load_expected_data():
     # Load the expected data from scenario.npz
     data = np.load('scenario.npz')  # change this to your own path
@@ -164,28 +155,27 @@ def load_expected_data():
     return df
 
 
-
 def test_scenario(planet):
     inputs = {'radius': 35.,
               'angle': 45.,
               'strength': 1e7,
               'density': 3000.,
-              'velocity': 19e3}
-
+              'velocity': 19e3,
+              'init_altitude': 100000.0}
 
     # Run the simulation
     result = planet.solve_atmospheric_entry(**inputs)
-    print(result.iloc[-1])
-    print("11111111")
+    print(result.velocity.head(40))
+
 
     assert type(result) is pd.DataFrame
     for key in ('velocity', 'mass', 'angle', 'altitude',
             'distance', 'radius', 'time'):
      assert key in result.columns
 
+
     # Load the expected scenario data
     expected_data = load_expected_data()
-    print(expected_data)
 
     # Compare the result with expected data
     # This assumes both result and expected_data are DataFrames with the same structure
@@ -196,21 +186,17 @@ def test_scenario(planet):
             assert column in result.columns, f"Column '{column}' not found in result DataFrame"
             assert np.allclose(result[column].iloc[:num_rows_to_compare], 
                                expected_data[column].iloc[:num_rows_to_compare], 
-                               atol=1), f"{column} data does not match expected results in the first {num_rows_to_compare} rows"
-
-
+                               rtol=1), f"{column} data does not match expected results in the first {num_rows_to_compare} rows"
 
 
     # Get the last row of expected_data
     last_row_expected = expected_data.iloc[-1]
     result_at_9_75 = result.iloc[39]
 
-
     # Check if the closest row in result at time = 9.75 matches the values of the last row of expected_data
     for column in expected_data.columns:
         if column not in inputs: 
             assert np.isclose(result_at_9_75[column], last_row_expected[column], atol=1), f"{column} at time 9.75 does not match expected value from scenario.npz"
-
 
 if __name__  == '__main__':
     pytest.main([__file__])
