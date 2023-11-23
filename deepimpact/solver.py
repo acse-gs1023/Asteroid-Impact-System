@@ -219,13 +219,13 @@ class Planet():
 
     def analyse_outcome(self, result):
         """
-        Inspect a pre-found solution to calculate the impact and airburst stats.
+        Inspect a pre-found solution to calculate the impact and airburst stats
 
         Parameters
         ----------
         result : DataFrame
             pandas dataframe with velocity, mass, angle, altitude, horizontal
-            distance, radius and dedz as a function of time.
+            distance, radius and dedz as a function of time
 
         Returns
         -------
@@ -236,14 +236,14 @@ class Planet():
                 following strings: ``Airburst`` or ``Cratering``),
             as well as the following 4 keys:
                 ``burst_peak_dedz``, ``burst_altitude``,
-                ``burst_distance``, ``burst_energy``.
+                ``burst_distance``, ``burst_energy``
         """
 
         outcome = {'outcome': 'Unknown',
-                   'burst_peak_dedz': 0.,
-                   'burst_altitude': 0.,
-                   'burst_distance': 0.,
-                   'burst_energy': 0.}
+                'burst_peak_dedz': 0.,
+                'burst_altitude': 0.,
+                'burst_distance': 0.,
+                'burst_energy': 0.}
         # Check if the DataFrame is empty
         if result.empty:
             return outcome
@@ -251,24 +251,27 @@ class Planet():
         # Find the index of the maximum energy deposition rate
         max_dedz_idx = result['dedz'].idxmax()
         max_dedz = result.loc[max_dedz_idx, 'dedz']
-        max_dedz_altitude = result.loc[max_dedz_idx, 'altitude']
 
         # Check if the max energy deposition occurs at an altitude above 0
+        max_dedz_altitude = result.loc[max_dedz_idx, 'altitude']
         if max_dedz_altitude > 0:
             outcome['outcome'] = 'Airburst'
             outcome['burst_peak_dedz'] = max_dedz
             outcome['burst_altitude'] = max_dedz_altitude
             outcome['burst_distance'] = result.loc[max_dedz_idx, 'distance']
-            # Calculate burst energy as the kinetic energy at the burst point
-            burst_mass = result.loc[max_dedz_idx, 'mass']
-            burst_velocity = result.loc[max_dedz_idx, 'velocity']
-            outcome['burst_energy'] = 0.5 * burst_mass * burst_velocity**2 / 4.184e12  # in kt
+
+            # Calculate the kinetic energy loss from initial altitude to burst altitude
+            initial_kinetic_energy = 0.5 * result.loc[0, 'mass'] * result.loc[0, 'velocity']**2
+            burst_kinetic_energy = 0.5 * result.loc[max_dedz_idx, 'mass'] * result.loc[max_dedz_idx, 'velocity']**2
+            energy_loss = initial_kinetic_energy - burst_kinetic_energy
+
+            # Convert energy loss to kilotons (1 kt = 4.184e12 joules)
+            outcome['burst_energy'] = energy_loss / 4.184e12
         else:
             outcome['outcome'] = 'Cratering'
             # Additional details for cratering can be added based on specific criteria
 
         return outcome
-
     
     def read_csv(self):
         self.altitudes = []
