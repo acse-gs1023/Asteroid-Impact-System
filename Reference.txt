@@ -1,0 +1,8 @@
+During the development process, generative AI hsa been used in multiple parts. ChatGPT has been
+used during developing idea stages, to help us understand physics and mathematical concepts. 
+During code writing stages, ChatGPT has been used to generate simple code snippets such as ploting 
+and translate simple mathematical equation to python functions. During code review part, we have used
+github copliot and ChatGPT to generate test cases, as well as later been used to generate comments and 
+docstring for documentation. All result generated from AI has went through careful revision, and AI has 
+only been used to avoid redundant work and to enhance our knowledge. 
+
