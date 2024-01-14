@@ -1,6 +1,12 @@
 # ACS-1-deepimpact
 
-This is a very brief Readme to familiarise you with how to install and run the tool you will develop. You should expand and elaborate on this in your final version.
+## Problem Statement
+Asteroids entering Earth’s atmosphere are subject to extreme drag forces that decelerate, heat and disrupt the space rocks. Stimulate the path of asteroid entering the earth's atmosphere and the zero point of impact. Further calculate the impacted radius and population by the asteroid impact.
+
+For more details, refer to `ProjectDescription.ipynb`, `AirburstSolver.ipynb` and `DamageMapper.ipynb`.
+
+
+This is a very brief Readme to get a basic understanding to how to install and run the tool you will develop.
 
 ## Installation
 
@@ -24,7 +30,6 @@ To run the pytest test suite, from the base directory run
 pytest tests/
 ```
 
-Note that you should keep the tests provided, adding new ones as you develop your code. If any of these tests fail it is likely that the scoring algorithm will not work.
 
 ## Documentation
 
@@ -33,7 +38,7 @@ To generate the documentation (in html format)
 python -m sphinx docs html
 ```
 
-See the `docs` directory for the preliminary documentation provided that you should add to.
+See the `docs` directory for the documentation,
 
 ## Example usage
 
@@ -45,3 +50,4 @@ python examples/example.py
 ## More information
 
 For more information on the project specfication, see the python notebooks: `ProjectDescription.ipynb`, `AirburstSolver.ipynb` and `DamageMapper.ipynb`.
+
